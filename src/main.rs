@@ -1,4 +1,5 @@
 pub mod aez_utils;
+pub mod parallel;
 pub mod tools;
 
 #[cfg(test)]
@@ -6,12 +7,13 @@ mod tests;
 
 use crate::tools::*;
 
+const TRIALS: u64 = 1_u64 << 30;
 fn main() {
-    println!("Hello, world!");
+    _find_and_print_datas();
+}
 
-    let trials = 1_u64 << 30;
-
-    if let Some((data1, data2)) = second_attack_scenario(trials) {
+fn _find_and_print_datas() {
+    if let Some((data1, data2)) = second_attack_scenario(TRIALS) {
         assert_ne!(data1.key, data2.key);
         assert_ne!(data1.plaintext, data2.plaintext);
 
@@ -22,4 +24,9 @@ fn main() {
         println!("1{}", data1);
         println!("2{}", data2);
     }
+}
+
+fn _estimate_proba() {
+    let proba = second_attack_proba(TRIALS);
+    println!("Estimate 2^{} probability of success.", proba.log2());
 }

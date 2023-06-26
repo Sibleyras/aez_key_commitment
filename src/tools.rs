@@ -1,7 +1,7 @@
+use crate::parallel::par_prob;
+use crate::parallel::par_search;
 use bit_vec::BitVec;
 use rand::prelude::*;
-use std::sync::mpsc;
-use std::thread;
 
 /*
 A collection of useful function to be used to break AEZ key commitment.
@@ -14,19 +14,26 @@ use aes::Block;
 Return a couple of data with different keys and plaintext but the same ciphertext and tau = 128 authentication bits.
 */
 pub fn second_attack_scenario(trials: u64) -> Option<(AezData, AezData)> {
-    match parrallel_search(trials) {
-        (work, Some((sx, key1, key2))) => {
+    match par_search(trials, zero_diff_val) {
+        Some((sx, key1, key2)) => {
             println!(
                 "Found a zero diff trail after {} trials.",
-                (work as f64).log2()
+                (trials as f64).log2()
             );
             Some(derive_plaintext(sx, key1, key2))
         }
-        (_, None) => {
+        None => {
             println!("No trail found.");
             None
         }
     }
+}
+
+/*
+Estimate the probability of the procedure.
+*/
+pub fn second_attack_proba(trials: u64) -> f64 {
+    par_prob(trials, || zero_diff_val().is_some())
 }
 
 /*
@@ -78,41 +85,6 @@ pub fn derive_plaintext(sx: Block, key1: [Block; 3], key2: [Block; 3]) -> (AezDa
     data2.update_plaintext(&ciphertext);
 
     (data1, data2)
-}
-
-/* Try hard to make the attack works. */
-pub fn parrallel_search(trials: u64) -> (u64, Option<(Block, [Block; 3], [Block; 3])>) {
-    const CHUNK_WORK: u64 = 0x1000;
-    let mut threads = Vec::new();
-    let (t_finish, r_finish) = mpsc::channel();
-    let nbthreads = num_cpus::get();
-
-    for _ in 0..nbthreads {
-        let t_finish = t_finish.clone();
-
-        threads.push(thread::spawn(move || {
-            while t_finish.send(None).is_ok() {
-                for _ in 0..CHUNK_WORK {
-                    let attempt = zero_diff_val();
-                    if attempt.is_some() {
-                        t_finish.send(attempt).unwrap();
-                    }
-                }
-            }
-        }));
-    }
-
-    let mut total_works = 0;
-    for attempt in r_finish {
-        if attempt.is_some() {
-            return (total_works, attempt);
-        }
-        total_works += CHUNK_WORK;
-        if total_works >= trials {
-            return (total_works, None);
-        }
-    }
-    (total_works, None)
 }
 
 /* Try to randomly find a set of values to break key commitment. This is the heart of the attack with an estimated 2^-27 probability of success. */
