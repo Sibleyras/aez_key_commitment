@@ -17,7 +17,7 @@ pub fn second_attack_scenario(trials: u64) -> Option<(AezData, AezData)> {
     match par_search(trials, zero_diff_val) {
         Some((sx, key1, key2)) => {
             println!(
-                "Found a zero diff trail after {} trials.",
+                "Found a zero diff trail in less than 2^{} trials.",
                 (trials as f64).log2()
             );
             Some(derive_plaintext(sx, key1, key2))
